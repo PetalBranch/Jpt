@@ -4,6 +4,7 @@ namespace Petalbranch\Jpt;
 
 use Exception;
 use InvalidArgumentException;
+use Petalbranch\Jpt\Exception\TokenValidationException;
 use Petalbranch\PetalCipher\PetalCipher;
 
 class Jpt
@@ -137,45 +138,55 @@ class Jpt
      *
      * @param string $token
      * @return object
-     * @throws Exception
+     * @throws TokenValidationException
      */
     public function validate(string $token): object
     {
         // 验证令牌格式：必须由三部分组成 (crown.petal.thorn)
         $token = explode('.', $token);
-        if (count($token) != 3) throw new Exception("令牌格式错误");
+        if (count($token) != 3) throw new TokenValidationException("令牌格式错误", 401001);
 
         $crown = Utils::b64UrlDecode($token[0]);
         $petal = Utils::cipherUrlDecode($token[1], $this->pc);
         $thorn = $token[2];
 
+        if (!isset($crown['alg'])) {
+            throw new TokenValidationException("无效的 crown 数据", 401002);
+        }
+
+        if (!isset($petal['digest'])) {
+            throw new TokenValidationException("无效的 petal 数据", 401003);
+        }
+
         $alg = $crown['alg'];
-        if (!isset(self::SUPPORT_ALG[$alg])) throw new Exception("不支持的加密算法");
+        if (!isset(self::SUPPORT_ALG[$alg])) throw new TokenValidationException("不支持的加密算法", 401004);
         $alg = self::SUPPORT_ALG[$alg];
 
         // 校验签名是否正确：使用指定算法和密钥重新计算签名并与令牌中的签名比较
+        $crown = array_filter($crown);
+        $petal = array_filter($petal);
         $signature = hash_hmac($alg, json_encode(['crown' => $crown, 'petal' => $petal]), $this->options['secret']);
         if (!hash_equals($signature, $thorn)) {
-            throw new Exception("令牌签名验证失败");
+            throw new TokenValidationException("令牌签名验证失败", 401005);
         }
 
         // 校验 crown 和 petal 的摘要是否匹配：确保 crown 内容未被篡改
         $crown_digest = md5(json_encode($crown));
         if ($crown_digest != $petal['digest']) {
-            throw new Exception("令牌数据验证失败");
+            throw new TokenValidationException("令牌数据验证失败", 401006);
         }
 
         // iss 签发人验证：检查签发人是否在允许列表中
         if ($this->getOption('issuers') !== '*' && $this->options['issuers'] !== null) {
             if (!in_array($crown['iss'], explode(',', $this->options['issuers']))) {
-                throw new Exception("令牌签发人验证失败");
+                throw new TokenValidationException("令牌签发人验证失败", 401007);
             }
         }
 
         //  aud 接收人验证：检查接收人是否在允许列表中
         if ($this->getOption('aud') !== '*' && $this->options['aud'] !== null) {
             if (!in_array($crown['aud'], explode(',', $this->options['aud']))) {
-                throw new Exception("令牌接收人验证失败");
+                throw new TokenValidationException("令牌接收人验证失败", 401008);
             }
         }
 
@@ -184,14 +195,14 @@ class Jpt
         // nbf 生效时间验证：当前时间需大于等于生效时间减去容差时间
         if (isset($crown['nbf']) && is_numeric($crown['nbf'])) {
             if ($current_time + $this->options['leeway'] < $crown['nbf']) {
-                throw new Exception("令牌尚未生效");
+                throw new TokenValidationException("令牌尚未生效", 401010);
             }
         }
 
         // exp 过期时间验证：当前时间需小于过期时间加上容差时间
         if (isset($crown['exp']) && is_numeric($crown['exp'])) {
             if ($current_time >= $crown['exp'] + $this->options['leeway']) {
-                throw new Exception("令牌已过期");
+                throw new TokenValidationException("令牌已过期", 401012);
             }
         }
 
@@ -345,29 +356,42 @@ class Jpt
     }
 
 
+
     /**
      * 获取 Crown 数据
      *
-     * @param string|null $key 数据键名，如果为空则返回所有数据
-     * @return mixed 返回指定键的值或所有数据，键不存在时返回null
+     * @param string|null $key 数据键名，如果为 null 则返回所有数据
+     * @param mixed $default 默认值，当指定键名不存在时返回此值
+     * @return mixed 返回指定键名对应的值或所有数据
      */
-    public function getCrownData(string $key = null): mixed
+    public function getCrownData(string $key = null,mixed $default = null): mixed
     {
-        if ($key) return $this->crown[$key] ?? null;
+        // 如果指定了键名，则返回对应的数据或默认值
+        if ($key !== null) {
+            return $this->crown[$key] ?? $default;
+        }
+        // 如果未指定键名，则返回所有数据
         return $this->crown;
     }
+
 
     /**
      * 获取 Petal 数据
      *
-     * @param string|null $key 数据键名，如果指定则返回对应键值，否则返回所有数据
-     * @return mixed 返回指定键名的数据值，如果键名不存在则返回null；如果不指定键名则返回所有花瓣数据
+     * @param string|null $key 数据键名，如果为null则返回所有数据
+     * @param mixed $default 默认值，当指定键名不存在时返回此值
+     * @return mixed 返回指定键名对应的值或所有数据
      */
-    public function getPetalData($key = null): mixed
+    public function getPetalData(string $key = null,mixed $default = null): mixed
     {
-        if ($key) return $this->petal[$key] ?? null;
+        // 如果指定了键名，则返回对应的数据或默认值
+        if ($key !== null) {
+            return $this->petal[$key] ?? $default;
+        }
+        // 未指定键名时返回所有 Petal 数据
         return $this->petal;
     }
+
 
 
 }
