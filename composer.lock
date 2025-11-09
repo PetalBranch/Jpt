@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d3bf2f0c127252f48fe3a6bf1dbe32ad",
+    "content-hash": "e1780306d1b52b796211beac51f667fa",
     "packages": [
         {
             "name": "petalbranch/petal-cipher",
@@ -1734,7 +1734,9 @@
     "stability-flags": {},
     "prefer-stable": false,
     "prefer-lowest": false,
-    "platform": {},
+    "platform": {
+        "php": "^8.0"
+    },
     "platform-dev": {},
     "plugin-api-version": "2.6.0"
 }
