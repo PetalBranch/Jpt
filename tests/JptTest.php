@@ -1,35 +1,121 @@
 <?php
 
-namespace Petalbranch\Jpt;
 
-use Petalbranch\Jpt\Crypto\HmacSigner;
-use Petalbranch\PetalCipher\PetalCipher;
+use Petalbranch\Jpt\Jpt;
 use PHPUnit\Framework\TestCase;
 
 class JptTest extends TestCase
 {
 
-    public function testEncode()
+    public function testGetOption()
     {
-        $signer = new HmacSigner();
-        $pc = new PetalCipher("123456");
-        $jpt = new Jpt($signer, $pc, "123456");
-        $jpt->encode(['a' => 1, 'b' => 2], ['c' => 3]);
-
-        echo $jpt->encode(['a' => 1, 'b' => 2], ['c' => 3]);
+        $jpt = new Jpt();
+        $this->assertTrue($jpt->getOption('aud') === '*');
+        $jpt->setOption('aud', 'test');
+        $this->assertTrue($jpt->getOption('aud') === 'test');
+        $jpt->setOption('aud', null);
+        $this->assertTrue($jpt->getOption('aud') === null);
     }
 
-    public function testVerify()
+    public function testSetOptSub()
     {
+        $jpt = new Jpt();
+        $jpt->setOptSub('test');
+        $this->assertTrue($jpt->getOption('sub') === 'test');
+    }
+
+    public function testSetOptIss()
+    {
+        $jpt = new Jpt();
+        $jpt->setOptIss('test');
+        $this->assertTrue($jpt->getOption('iss') === 'test');
+    }
+
+    public function testGenerate()
+    {
+        $jpt = new Jpt();
+        $jpt->setOption('sub', 'test');
+        $jpt->setOption('iss', 'test');
+        $token = $jpt->generate();
+        $this->assertTrue(strlen($token) > 0);
 
     }
 
-    public function testDecode()
+    public function testGetExpiration()
     {
-        $signer = new HmacSigner();
-        $pc = new PetalCipher("123456");
-        $jpt = new Jpt($signer, $pc, "123456");
-        $arr = $jpt->decode('eyJ0eXAiOiJKUFQiLCJhbGciOiJIUzI1NiIsImEiOjEsImIiOjJ9.lAzgKXYrQvU91hL9I9f84iaPmDLFmdtA-dbT-Kt5-K4imKaTIntimYtimdbSmitF-K-Q4szK4Nvd4saTInU84sgNbD0K-K38ID4FmK45f9S94Af7b1F.G089SQCqObroQe-EMtcNX6KYXLFTy_Fq3qzfbKvny_8');
-        print_r($arr);
+        $jpt = new Jpt();
+        $token = $jpt->generate();
+
+        sleep(1);
+        $jpt = new Jpt();
+        $jpt->validate($token);
+        $this->assertEquals(3599,$jpt->getExpiration());
     }
+
+    public function testGetPetalData()
+    {
+        $jpt = new Jpt();
+        $jpt->setPetalData(['test' => 'test']);
+        $token = $jpt->generate();
+
+        $jpt = new Jpt();
+        $jpt->validate($token);
+
+        $this->assertEquals('test',$jpt->getPetalData('test'));
+    }
+
+    public function testGetCrownData()
+    {
+        $jpt = new Jpt();
+        $jpt->setOption('sub', 'test');
+        $jpt->setOption('iss', 'test');
+        $jpt->setCrownData(['test' => 'test']);
+        $token = $jpt->generate();
+
+        $jpt = new Jpt();
+        $jpt->setOptIssuers(['test']);
+        $jpt->validate($token);
+
+        $this->assertEquals('test',$jpt->getCrownData('test'));
+    }
+//
+//    public function testSetOption()
+//    {
+//
+//    }
+//
+//    public function testSetPetalData()
+//    {
+//
+//    }
+//
+//    public function testSetCrownData()
+//    {
+//
+//    }
+//
+//    public function testSetOptions()
+//    {
+//
+//    }
+//
+//    public function testSetOptNbf()
+//    {
+//
+//    }
+//
+//    public function testValidate()
+//    {
+//
+//    }
+//
+//    public function testSetOptIssuers()
+//    {
+//
+//    }
+//
+//    public function testSetOptAud()
+//    {
+//
+//    }
 }
