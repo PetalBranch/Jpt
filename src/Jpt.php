@@ -234,7 +234,7 @@ class Jpt
         $crown = $this->crown;
         $crown['alg'] = $this->options['alg'];
         $crown['iss'] = $this->options['iss'];
-        $crown['sub'] = $this->options['sub'];
+        if (!empty($this->options['sub'])) $crown['sub'] = $this->options['sub'];
         $crown['aud'] = $this->options['aud'];
         $crown['nbf'] = $this->options['nbf'] ?? $crown['iat']; // 默认生效时间为签发时间
         $crown['iat'] = time();
@@ -319,7 +319,7 @@ class Jpt
      * @param array $issuers 发行方数组
      * @return $this 返回当前对象实例，支持链式调用
      */
-    public function setOptIssuers(array $issuers)
+    public function setOptIssuers(array $issuers): object
     {
         // 将发行方数组转换为逗号分隔的字符串，并去除首尾逗号
         $this->options['issuers'] = trim(implode(',', $issuers), ',');
@@ -342,6 +342,19 @@ class Jpt
         return $this;
     }
 
+    /**
+     * 设置crown数组中的键值对
+     *
+     * @param string $key 要设置的键名
+     * @param mixed $value 要设置的值
+     * @return object 返回当前对象实例，支持链式调用
+     */
+    public function withCrown(string $key, mixed $value): object
+    {
+        $this->crown[$key] = $value;
+        return $this;
+    }
+
 
     /**
      * 设置 Petal 数据
@@ -355,6 +368,17 @@ class Jpt
         return $this;
     }
 
+    /**
+     * 设置 Petal 数组中的键值对
+     * @param string $key
+     * @param mixed $value
+     * @return object
+     */
+    public function withPetal(string $key, mixed $value): object
+    {
+        $this->petal[$key] = $value;
+        return $this;
+    }
 
 
     /**
@@ -364,7 +388,7 @@ class Jpt
      * @param mixed $default 默认值，当指定键名不存在时返回此值
      * @return mixed 返回指定键名对应的值或所有数据
      */
-    public function getCrownData(string $key = null,mixed $default = null): mixed
+    public function getCrownData(string $key = null, mixed $default = null): mixed
     {
         // 如果指定了键名，则返回对应的数据或默认值
         if ($key !== null) {
@@ -382,7 +406,7 @@ class Jpt
      * @param mixed $default 默认值，当指定键名不存在时返回此值
      * @return mixed 返回指定键名对应的值或所有数据
      */
-    public function getPetalData(string $key = null,mixed $default = null): mixed
+    public function getPetalData(string $key = null, mixed $default = null): mixed
     {
         // 如果指定了键名，则返回对应的数据或默认值
         if ($key !== null) {
@@ -391,7 +415,6 @@ class Jpt
         // 未指定键名时返回所有 Petal 数据
         return $this->petal;
     }
-
 
 
 }
