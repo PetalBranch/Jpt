@@ -2,6 +2,7 @@
 
 namespace Petalbranch\Jpt;
 
+use JsonException;
 use Petalbranch\PetalCipher\PetalCipher;
 
 /**
@@ -27,6 +28,7 @@ class Utils
      *
      * @param string $data 需要解码的URL安全Base64字符串
      * @return array 解码后的数组数据
+     * @throws JsonException
      */
     public static function b64UrlDecode(string $data): array
     {
@@ -38,7 +40,11 @@ class Utils
         if ($padding > 0) $replaced .= str_repeat('=', 4 - $padding);
 
         // 进行Base64解码并转换为数组
-        return json_decode(base64_decode($replaced), true);
+        return json_decode(
+            json: base64_decode($replaced),
+            associative: true,
+            flags: JSON_THROW_ON_ERROR
+        );
     }
 
     /**
@@ -60,6 +66,7 @@ class Utils
      * @param string $data 需要解密的URL安全编码字符串
      * @param PetalCipher $pc 解密器实例
      * @return array 解密后的原始数据
+     * @throws JsonException
      */
     public static function cipherUrlDecode(string $data, PetalCipher $pc): array
     {
@@ -71,7 +78,11 @@ class Utils
         if ($padding > 0) $replaced .= str_repeat('=', 4 - $padding);
 
         // 解密数据并解析JSON格式
-        return json_decode($pc->decrypt($replaced), true);
+        return json_decode(
+            json: $pc->decrypt($replaced),
+            associative: true,
+            flags: JSON_THROW_ON_ERROR
+        );
     }
 
 }
