@@ -1,8 +1,8 @@
 # Json Petal Token (JPT)
 
-![PHP Version](https://img.shields.io/badge/php-%3E%3D8.0-blue)
+![PHP Version](https://img.shields.io/badge/php-%3E%3D8.3-blue)
 ![License](https://img.shields.io/badge/license-Apache%202.0-green)
-![Stable](https://img.shields.io/badge/stable-v1.0.0-orange)
+![Stable](https://img.shields.io/badge/stable-v1.2.1-orange)
 
 ## 📘 简介
 
@@ -138,18 +138,13 @@ composer require petalbranch/jpt
 | **结构**    | **名称 (Name)**                | **编码/加密 (Encoding)** | **可见性 (Visibility)** | **用途 (Usage)**                                                    |
 |-----------|------------------------------|----------------------|----------------------|-------------------------------------------------------------------|
 | **Crown** | 花冠 (Header & Public Payload) | Base64URL            | 🔓 公开 (Public)       | 存放元数据（算法、类型）及**非敏感**业务数据（如 UserID、权限等级）。相当于 JWT 的 Header+Payload。 |
-| **Petal** | 花瓣 (Private Payload)         | PetalCipher (AES)    | 🔒 私密 (Private)      | 存放**敏感**业务数据（如手机号、邮箱、内部ID）及完整性摘要。仅持有密钥的服务端可解密。                    |
+| **Petal** | 花瓣 (Private Payload)         | PetalCipher          | 🔒 私密 (Private)      | 存放**敏感**业务数据（如手机号、邮箱、内部ID）及完整性摘要。仅持有密钥的服务端可解密。                    |
 | **Thorn** | 花刺 (Signature)               | HMAC                 | 🛡️ 签名 (Signature)   | 防止 Token 被篡改。对 Crown 和 Petal 的密文进行签名。                             |
 
 
 结构示例：
 
-> <span style="color:#096256">eyJpc3MiOiJTbXNNZyIsInN1YiI6IlNtc01nIiwiYXVkIjoiU21zTWciLCJpYXQiOjE3NjI3NzI1</span>
-> <span style="color:#096256">NjcsImV4cCI6MTc2Mjc3NjE2NywianRpIjoiYTQ1YjY3ZGQxMDU4NDBhMTRlMTQ3ZmUyOGU1MDEz</span>
-> <span style="color:#096256">ODciLCJpZCI6MSwidXNlcm5hbWUiOiJ0ZXN0Iiwibmlja25hbWUiOiLmtYvor5XnlKjmiLciLCJh</span>
-> <span style="color:#096256">bGciOiJIUzI1NiIsInR5cCI6IkpQVCJ9</span><span style="color:red">.</span><span style="color:#383838">1g9rt4v23A6tB6-d5dTBEQkdEQhxYbWrNiTxhfOAhbY</span>
-> <span style="color:#383838">bYQZVEvY0hfOANaCuNm9q</span><span style="color:red">.</span><span style="color:#2c3ea0">3fba15e95d346f12c289c7e5e88c008a73e18d1d38f8b476dbbca0</span>
-> <span style="color:#2c3ea0">f2add9486a</span>
+> eyJpc3MiOiJTbXNNZyIsInN1YiI6IlNtc01nIiwiYXVkIjoiU21zTWciLCJpYXQiOjE3NjI3NzI1NjcsImV4cCI6MTc2Mjc3NjE2NywianRpIjoiYTQ1YjY3ZGQxMDU4NDBhMTRlMTQ3ZmUyOGU1MDEzODciLCJpZCI6MSwidXNlcm5hbWUiOiJ0ZXN0Iiwibmlja25hbWUiOiLmtYvor5XnlKjmiLciLCJhbGciOiJIUzI1NiIsInR5cCI6IkpQVCJ9.1g9rt4v23A6tB6-d5dTBEQkdEQhxYbWrNiTxhfOAhbYbYQZVEvY0hfOANaCuNm9q.3fba15e95d346f12c289c7e5e88c008a73e18d1d38f8b476dbbca0f2add9486a
 
 
 ## 📄 许可证
