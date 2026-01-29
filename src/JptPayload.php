@@ -3,8 +3,6 @@
 
 namespace Petalbranch\Jpt;
 
-use InvalidArgumentException;
-
 /**
  * JptPayload 类用于表示一个具有JPT结构的载荷对象。
  * 该类为只读，一旦创建实例后其属性值不可更改。
