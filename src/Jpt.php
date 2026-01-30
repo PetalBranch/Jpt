@@ -20,12 +20,16 @@ class Jpt
         'ttl' => true,
         'alg' => true,
         'secret' => true,
+        'sub' => true,
         'leeway' => true,
         'allowed_issuers' => true,
         'allowed_audiences' => true
     ];
 
     private PetalCipher $pc;
+
+    /** @var JptPayload|null 用于缓存最后一次生成的 Payload 对象 */
+    private ?JptPayload $lastPayload = null;
 
     /** @var array|string[] 定义支持的算法类型及其对应的哈希函数 */
     private array $allowed_alg = [
@@ -64,6 +68,7 @@ class Jpt
      *                       - aud 受众，默认为 'nameless'<br>
      *                       - ttl 生命周期（秒），默认为 '3600'<br>
      *                       - alg 加密算法，默认为'HS256'，可选（HS256、HS384、HS512）<br>
+     *                       - sub 主题 <br>
      *                       - secret 密钥，默认为空字符串<br>
      *                       - leeway 允许的误差时间<br>
      *                       - allowed_issuers 允许的发行者列表<br>
@@ -77,6 +82,7 @@ class Jpt
             'aud' => 'nameless',                // 受众
             'ttl' => 3600,                      // 生命周期
             'alg' => 'HS256',                   // 加密算法
+            'sub' => null,                      // 主题
             'secret' => '',                     // 密钥
             'leeway' => 0,                      // 允许的误差时间
             'allowed_issuers' => [],            // 签发人白名单
@@ -188,7 +194,7 @@ class Jpt
      *
      * @param array $options 要设置或更新的选项数组，可包含以下键值：<br>
      *                        - iss 签发人，默认为 'nameless'<br>
-     *                        - aud 接收人，默认为 '*'<br>
+     *                        - aud 接收人，默认为 'nameless'<br>
      *                        - ttl 生命周期（秒），默认为 '3600'<br>
      *                        - alg 加密算法，默认为'HS256'，可选（HS256、HS384、HS512）<br>
      *                        - secret 密钥，默认为空字符串<br>
@@ -456,10 +462,13 @@ class Jpt
         $crown['iss'] = $this->options['iss'];
         if (!empty($this->options['sub'])) $crown['sub'] = $this->options['sub'];
         $crown['aud'] = $this->options['aud'];
+
+        // 时间处理
         $crown['iat'] = time();
         $crown['nbf'] = $this->options['nbf'] ?? $crown['iat']; // 默认生效时间为签发时间
         $crown['exp'] = $crown['iat'] + $this->options['ttl'];
 
+        // 生成 JTI
         try {
             $crown['jti'] = "jpt." . bin2hex(random_bytes(16));
         } catch (Exception) {
@@ -467,10 +476,11 @@ class Jpt
         }
 
         $crown['typ'] = "JPT";
-        // 过滤 null
+
+        // 过滤 Crown 中的 null 值
         $crown = array_filter($crown, fn($v) => !is_null($v));
 
-        // 构建私有数据部分（petal），并加入摘要信息
+        // 构建私有数据部分（petal），并计算摘要信息
         $petal = $this->petal;
         $petal['digest'] = hash('sha256', json_encode($crown, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
         $petal = array_filter($petal, fn($v) => !is_null($v));
@@ -481,7 +491,24 @@ class Jpt
         $signature = hash_hmac($alg, "$crown_url.$petal_url", $this->options['secret']);
 
         // 拼接令牌
-        return "$crown_url.$petal_url.$signature";
+        $token = "$crown_url.$petal_url.$signature";
+
+        // 保存快照
+        $this->lastPayload = new JptPayload(
+            iss: $crown['iss'],
+            sub: $crown['sub'] ?? null,
+            aud: $crown['aud'],
+            iat: (int)$crown['iat'],
+            exp: (int)$crown['exp'],
+            jti: $crown['jti'],
+            alg: $crown['alg'],
+            nbf: (int)$crown['nbf'],
+            payload: $token, // 这里存入生成的完整 Token
+            crown: $crown,
+            petal: $petal
+        );
+
+        return $token;
     }
 
 
@@ -588,6 +615,21 @@ class Jpt
         );
     }
 
+    /**
+     * 获取当前生成的 JptPayload 对象
+     * 该方法通常在调用 generate() 之后使用，用于获取系统生成的 jti 、 iat 、 exp 等信息。
+     * 如果在调用此方法前未调用 generate()，则会自动执行一次 generate()。
+     *
+     * @return JptPayload
+     * @throws Exception
+     */
+    public function toJptPayload(): JptPayload
+    {
+        if ($this->lastPayload === null) {
+            $this->generate();
+        }
+        return $this->lastPayload;
+    }
 
 
 
@@ -626,5 +668,6 @@ class Jpt
         }
         return $options;
     }
+
 
 }

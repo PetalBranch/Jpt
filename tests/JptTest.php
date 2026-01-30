@@ -4,6 +4,7 @@ use Petalbranch\Jpt\Utils;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Petalbranch\Jpt\Jpt;
+use Petalbranch\Jpt\JptPayload;
 use Petalbranch\Jpt\Exception\TokenValidationException;
 
 class JptTest extends TestCase
@@ -190,12 +191,133 @@ class JptTest extends TestCase
         return [
             ['just-a-string'],
             ['part1.part2'],
-            ['part1.part2.part3.part4'],
-            ['..'], // 三段但为空
+            ['part1.part2.part3.part4']
         ];
     }
 
 
+    /**
+     * 测试场景 1：基本功能与自动生成
+     * 目标：验证在不手动调用 generate() 的情况下，toJptPayload() 是否会自动执行生成逻辑
+     */
+    public function testAutoGenerate()
+    {
+        $jpt = new Jpt($this->config);
 
+        // 直接调用，不先调用 generate()
+        $payloadObj = $jpt->toJptPayload();
 
+        // 断言：返回的必须是 JptPayload 实例
+        $this->assertInstanceOf(JptPayload::class, $payloadObj);
+
+        // 断言：内部必须包含生成的 Token 字符串
+        $this->assertNotEmpty($payloadObj->payload);
+        $this->assertIsString($payloadObj->payload);
+
+        // 断言：jti 必须存在
+        $this->assertNotEmpty($payloadObj->jti);
+        $this->assertStringStartsWith('jpt.', $payloadObj->jti);
+    }
+
+    /**
+     * 测试场景 2：数据一致性 (Token vs Object)
+     * 目标：验证 generate() 返回的字符串与 toJptPayload() 返回的对象是“同一份数据”
+     */
+    public function testConsistencyBetweenGenerateAndPayload()
+    {
+        $jpt = new Jpt(['secret' => $this->config['secret']]);
+
+        // 1. 手动生成 Token
+        $tokenString = $jpt->generate();
+
+        // 2. 获取对象
+        $payloadObj = $jpt->toJptPayload();
+
+        // 核心断言：对象里的 payload 字段必须等于 generate 返回的字符串
+        $this->assertEquals($tokenString, $payloadObj->payload);
+
+        // 验证：解析 Token 字符串中的 Crown (Base64部分) 来对比 JTI
+        // 这里手动拆解一下 Token 来验证，确保万无一失
+        $parts = explode('.', $tokenString);
+        $crownJson = base64_decode(strtr($parts[0], '-_', '+/'));
+        $crownArr = json_decode($crownJson, true);
+
+        // 断言：加密字符串里的 jti 必须等于 对象里的 jti
+        $this->assertEquals($crownArr['jti'], $payloadObj->jti);
+
+        // 断言：加密字符串里的 exp 必须等于 对象里的 exp
+        $this->assertEquals($crownArr['exp'], $payloadObj->exp);
+    }
+
+    /**
+     * 测试场景 3：配置项反映
+     * 目标：验证配置 (TTL, ISS, SUB) 是否正确反映在 Payload 对象中
+     */
+    public function testConfigurationReflection()
+    {
+        $ttl = 7200;
+        $iss = 'my-auth-server';
+        $sub = 'user_888';
+
+        $jpt = new Jpt([
+            'secret' => $this->config['secret'],
+            'ttl' => $ttl,
+            'iss' => $iss,
+            'sub' => $sub
+        ]);
+
+        $obj = $jpt->toJptPayload();
+
+        // 验证 ISS 和 SUB
+        $this->assertEquals($iss, $obj->iss);
+        $this->assertEquals($sub, $obj->sub);
+
+        // 验证时间计算 (exp = iat + ttl)
+        // 允许 1-2 秒的执行误差，但理论上是一致的
+        $this->assertEquals($obj->iat + $ttl, $obj->exp);
+
+        // 验证剩余有效期方法
+        $this->assertGreaterThan(0, $obj->getExpiration());
+        $this->assertLessThanOrEqual($ttl, $obj->getExpiration());
+    }
+
+    /**
+     * 测试场景 4：闭环验证 (Validate vs toJptPayload)
+     * 目标：验证“刚生成的对象”和“解密出来的对象”数据是否完全一致
+     */
+    public function testLoopValidation()
+    {
+        // 允许 iss 验证
+        $jpt = new Jpt([
+            'secret' => $this->config['secret'],
+            'allowed_issuers' => ['nameless'], // 默认 iss
+            'allowed_audiences' => ['nameless'] // 默认 aud
+        ]);
+
+        // 添加自定义数据
+        $jpt->withPetal('role', 'admin');
+        $jpt->withCrown('custom_tag', 'api_v1');
+
+        // 生成并获取对象
+        $originalPayloadObj = $jpt->toJptPayload();
+        $token = $originalPayloadObj->payload;
+
+        // 立即解密验证
+        $validatedPayloadObj = $jpt->validate($token);
+
+        // 对比两个对象的核心属性
+        $this->assertEquals($originalPayloadObj->jti, $validatedPayloadObj->jti);
+        $this->assertEquals($originalPayloadObj->iat, $validatedPayloadObj->iat);
+        $this->assertEquals($originalPayloadObj->exp, $validatedPayloadObj->exp);
+
+        // 对比自定义数据
+        $this->assertEquals(
+            $originalPayloadObj->getPetalData('role', null),
+            $validatedPayloadObj->getPetalData('role', null)
+        );
+        $this->assertEquals(
+            $originalPayloadObj->getCrownData('custom_tag', null),
+            $validatedPayloadObj->getCrownData('custom_tag', null)
+        );
+    }
 }

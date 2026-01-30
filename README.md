@@ -2,7 +2,7 @@
 
 ![PHP Version](https://img.shields.io/badge/php-%3E%3D8.3-blue)
 ![License](https://img.shields.io/badge/license-Apache%202.0-green)
-![Stable](https://img.shields.io/badge/stable-v1.2.1-orange)
+![Stable](https://img.shields.io/badge/stable-v1.2.2-orange)
 
 ## 📘 简介
 
@@ -12,7 +12,7 @@
 
 ## ✨ 特性
 
-- 🔒 **混合加密结构**：公开区 (Crown) 使用 Base64URL，私有区 (Petal) 使用对称加密，兼顾效率与隐私。
+- 🔒 **混合加密结构**：公开区 (Crown) 使用 Base64URL，私有区 (Petal) 使用[petal-cipher](https://github.com/PetalBranch/petal-cipher)加密兼顾隐私。
 - 🛡️ **安全签名**：支持 HMAC 系列算法 (HS256 / HS384 / HS512)，防止数据篡改。
 - 🧩 **灵活配置**：轻松设置签发人 (iss)、受众 (aud)、过期时间 (exp) 及 生效时间 (nbf)。
 - ⏱ **容错机制**：支持时间漂移容差 (leeway)，适应分布式系统的时间偏差。
@@ -28,50 +28,51 @@ composer require petalbranch/jpt
 
 ## 🚀 快速开始
 
-1. 生成 Token
+1. 生成 Token 并获取元数据
 
     ```php
     <?php
     
     use Petalbranch\Jpt\Jpt;
-    
+   
     // 1. 初始化配置
     $jpt = new Jpt([
-        'secret' => 'your-secure-secret-key-Must-Be-Complex', // 密钥
-        'iss'    => 'auth.domain.com',                        // 签发人
-        'aud'    => 'payment-service',                        // 受众
-        'ttl'    => 3600,                                     // 有效期 (秒)
-        'alg'    => 'HS256'                                   // 签名算法
+    'secret' => 'your-secure-secret-key-Must-Be-Complex', // 密钥
+    'iss'    => 'auth.domain.com',                        // 签发人
+    'aud'    => 'payment-service',                        // 受众
+    'ttl'    => 3600,                                     // 有效期 (秒)
+    'alg'    => 'HS256'                                   // 签名算法
     ]);
-    
+   
     // 2. 设置公开数据 (Crown) - 客户端可见
     $jpt->setCrownData([
-        'uid'  => 10086,
-        'role' => 'admin'
+    'uid'  => 10086,
+    'role' => 'admin'
     ]);
     // 链式调用添加单个数据
     $jpt->withCrown('nickname', 'PetalUser');
-    
+   
     // 3. 设置私有数据 (Petal) - 仅服务端可解密
     $jpt->setPetalData([
-        'email' => 'user@example.com'
+    'email' => 'user@example.com'
     ]);
     // 链式调用添加单个数据
     $jpt->withPetal('phone', '13800138000');
-    
+   
     // 4. 生成字符串
     $token = $jpt->generate();
-    
-    echo $token; 
    
-    // 输出示例:
-    // eyJpc3MiOiJTbXNNZyIsInN1YiI6IlNtc01nIiwiYXVkIjoiU21zTWciLCJpYXQiOjE3NjI3NzI1
-    // NjcsImV4cCI6MTc2Mjc3NjE2NywianRpIjoiYTQ1YjY3ZGQxMDU4NDBhMTRlMTQ3ZmUyOGU1MDEz
-    // ODciLCJpZCI6MSwidXNlcm5hbWUiOiJ0ZXN0Iiwibmlja25hbWUiOiLmtYvor5XnlKjmiLciLCJh
-    // bGciOiJIUzI1NiIsInR5cCI6IkpQVCJ9.1g9rt4v23A6tB6-d5dTBEQkdEQhxYbWrNiTxhfOAhbY
-    // bYQZVEvY0hfOANaCuNm9q.3fba15e95d346f12c289c7e5e88c008a73e18d1d38f8b476dbbca0
-    // f2add9486a
+    // 5. [新特性] 立即获取元数据
+    // 适用于需要将 JTI 存入 Redis 做黑名单或单点登录的场景
+    $payloadObj = $jpt->toJptPayload();
+   
+    $jti = $payloadObj->jti; // 获取系统生成的唯一标识 ID
+    $exp = $payloadObj->exp; // 获取过期时间戳
+   
+    echo "Token: " . $token . "\n";
+    echo "JTI: " . $jti . "\n";
     ```
+
 2. 验证 Token
 
     ```php
@@ -143,10 +144,81 @@ composer require petalbranch/jpt
 
 
 结构示例：
+```text
+eyJpc3MiOiJ0ZXN0LWlzc3VlciIsImF1ZCI6InRlc3QtYXBwIiwibmJmIjoxNzY5NzUxNDQwL
+CJpYXQiOjE3Njk3NTE0NDAsImV4cCI6MTc2OTc1NTA0MCwianRpIjoianB0LjdlZDM0ZmZlMW
+E0MGZhZjY0N2ExZTY3MWQzMWY0OTE3IiwiYWxnIjoiSFMyNTYiLCJ0eXAiOiJKUFQifQ.4Ayk
+nbQwWNCkJ2G8h8Lih9zin3GvB3OJn9-_z9ylBsGF-3-_n9LxBoOFn_CvzXzchQBl-SaJ-oDln
+sGxn_RN-ol8nsOxnQzihs-Az3-ALe7.1ef1768264878c6e8cb0a3f9616d6ca3c1580e7fcf
+7cf0b50f39764dc36eb170
+```
 
-> eyJpc3MiOiJTbXNNZyIsInN1YiI6IlNtc01nIiwiYXVkIjoiU21zTWciLCJpYXQiOjE3NjI3NzI1NjcsImV4cCI6MTc2Mjc3NjE2NywianRpIjoiYTQ1YjY3ZGQxMDU4NDBhMTRlMTQ3ZmUyOGU1MDEzODciLCJpZCI6MSwidXNlcm5hbWUiOiJ0ZXN0Iiwibmlja25hbWUiOiLmtYvor5XnlKjmiLciLCJhbGciOiJIUzI1NiIsInR5cCI6IkpQVCJ9.1g9rt4v23A6tB6-d5dTBEQkdEQhxYbWrNiTxhfOAhbYbYQZVEvY0hfOANaCuNm9q.3fba15e95d346f12c289c7e5e88c008a73e18d1d38f8b476dbbca0f2add9486a
+## 📖 API 参考手册
+
+### 1. Jpt 类 (核心操作)
+
+#### 基础配置 (Chainable)
+支持链式调用，用于动态修改初始化时的配置。
+
+- `setOption(string $key, mixed $value): self` - 设置通用配置项。
+- `setOptIss(string $iss): self` - 设置签发人。
+- `setOptAud(string $aud): self` - 设置受众。
+- `setOptTtl(int $ttl): self` - 设置生命周期(秒)。
+- `setOptLeeway(int $leeway): self` - 设置时间漂移容差。
+- `setOptNbf(?int $nbf): self` - 设置生效时间 (传入 null 可移除)。
+
+#### 数据装载 (Chainable)
+用于设置 Token 内携带的业务数据。
+
+- `setCrownData(array $data): self` - 批量设置公开数据 (Crown)。
+- `withCrown(string $key, mixed $value): self` - 添加单项公开数据。
+- `setPetalData(array $data): self` - 批量设置私密数据 (Petal)。
+- `withPetal(string $key, mixed $value): self` - 添加单项私密数据。
+- `withoutCrown(string $key): self` - 移除某项公开数据。
+- `withoutPetal(string $key): self` - 移除某项私密数据。
+
+#### 核心动作
+- `generate(): string` - 生成最终的 Token 字符串。
+- `toJptPayload(): JptPayload` - 获取当前数据的载荷对象 (包含生成的 jti, exp 等)。**常用于生成后立即获取元数据。**
+- `validate(string $token): JptPayload` - 验证并解析 Token 字符串。
+
+---
+
+### 2. JptPayload 类 (结果对象)
+
+`validate()` 和 `toJptPayload()` 的返回结果，所有属性均为 **Readonly**。
+
+#### 公开属性
+可以直接访问以下属性：
+- `$payload->iss` (string) - 签发人
+- `$payload->sub` (?string) - 主题
+- `$payload->aud` (string) - 受众
+- `$payload->jti` (string) - 唯一标识 ID
+- `$payload->exp` (int) - 过期时间戳
+- `$payload->iat` (int) - 签发时间戳
+- `$payload->nbf` (int) - 生效时间戳
+- `$payload->payload` (string) - 原始 Token 字符串
+
+#### 辅助方法
+- `getCrownData(?string $key, mixed $default): mixed` - 获取 Crown 数据。不传 key 返回整个数组。
+- `getPetalData(?string $key, mixed $default): mixed` - 获取 Petal 数据 (已解密)。不传 key 返回整个数组。
+- `getExpiration(): int` - 获取距离过期的剩余秒数 (已过期返回 0)。
+
+
+## 📜 更新日志
+### [1.2.2] - 2026-01-30
+
+#### Added
+- 新增 `toJptPayload()` 方法：支持在生成 Token 后立即获取 JTI、EXP 等元数据对象，无需二次解析。
+- 新增 `Jpt::getLastPayload()` 内部快照机制，确保对象状态与生成的 Token 字符串强一致。
+- 新增 API 参考手册至 README 文档。
+
+#### Changed
+- 优化 `generate()` 方法逻辑，在生成字符串的同时构建 `JptPayload` 缓存。
+- 更新 README 快速开始部分，增加获取 Token 元数据的示例。
+
+[👀 历史更新](CHANGELOG.md)
 
 
 ## 📄 许可证
 本项目遵循 [Apache License 2.0](./LICENSE.txt) 开源协议。
-
