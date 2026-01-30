@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2026-01-30
+
+### Documentation
+- **[Clarification]** 完善 PHPDoc 注释与 README 文档：
+  - 明确指出在设置 `iss` 和 `aud` 时不应使用通配符 `*`。
+  - 澄清验证白名单 (`allowed_issuers` / `allowed_audiences`) 中 `*` 的含义为“允许任意来源”。
+
 ## [1.2.2] - 2026-01-30
 
 ### Added

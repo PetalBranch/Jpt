@@ -219,6 +219,7 @@ class Jpt
     /**
      * 设置选项中的 iss 值<br>
      * 发行人：标识‌谁签发了‌JPT<br>
+     * 建议使用具体的域名或应用名，**请勿**使用 "*" 作为签发人标识。<br>
      * 示例：https://auth.example.com
      *
      * @param string $iss 要设置的 iss 值
@@ -249,6 +250,7 @@ class Jpt
     /**
      * 设置选项中的 'aud' 值<br>
      * 受众：标识令牌的接收方<br>
+     * 建议使用具体的服务名，**请勿**使用 "*" 作为受众标识。<br>
      * 示例：payment-service
      *
      * @param string $aud 要设置的 'aud' 值
@@ -308,7 +310,8 @@ class Jpt
 
 
     /**
-     * 设置允许的发行者
+     * 设置允许的发行者 (验证白名单)<br>
+     * **注意：** 如果列表中包含 "*"，则表示跳过签发人验证（允许任意签发人）。
      *
      * @param array $allowed_issuers 允许的发行者列表
      * @return Jpt 返回当前对象实例，以支持链式调用
@@ -321,7 +324,8 @@ class Jpt
 
 
     /**
-     * 设置允许的受众
+     * 设置允许的受众 (验证白名单)<br>
+     * **注意：** 如果列表中包含 "*"，则表示跳过受众验证（允许任意受众）。
      *
      * @param array $allowed_audiences 允许的受众列表
      * @return Jpt 返回当前对象实例，用于链式调用
@@ -569,6 +573,7 @@ class Jpt
         }
 
         // iss 签发人验证：检查签发人是否在允许列表中
+        // 如果白名单包含 "*"，则跳过具体匹配，允许所有
         if (!in_array("*", $this->getOption('allowed_issuers'))) {
             if (!in_array($crown['iss'], $this->getOption('allowed_issuers'))) {
                 throw new TokenValidationException("令牌签发人验证失败", 401007);
@@ -576,6 +581,7 @@ class Jpt
         }
 
         //  aud 接收人验证：检查接收人是否在允许列表中
+        // 如果白名单包含 "*"，则跳过具体匹配，允许所有
         if (!in_array("*", $this->getOption('allowed_audiences'))) {
             if (!in_array($crown['aud'], $this->getOption('allowed_audiences'))) {
                 throw new TokenValidationException("令牌接收人验证失败", 401008);
