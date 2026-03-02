@@ -296,7 +296,7 @@ class Jpt
      * @param int|null $nbf 时间戳，表示 JPT 在此时间之前不可用。如果为 null，则移除 nbf 选项。
      * @return Jpt 返回当前对象实例，支持链式调用
      */
-    public function SetOptNbf(?int $nbf): self
+    public function setOptNbf(?int $nbf): self
     {
         if (is_null($nbf)) {
             unset($this->options['nbf']);
