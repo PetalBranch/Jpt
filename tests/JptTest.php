@@ -211,8 +211,8 @@ class JptTest extends TestCase
         $this->assertInstanceOf(JptPayload::class, $payloadObj);
 
         // 断言：内部必须包含生成的 Token 字符串
-        $this->assertNotEmpty($payloadObj->payload);
-        $this->assertIsString($payloadObj->payload);
+        $this->assertNotEmpty($payloadObj->raw);
+        $this->assertIsString($payloadObj->raw);
 
         // 断言：jti 必须存在
         $this->assertNotEmpty($payloadObj->jti);
@@ -234,7 +234,7 @@ class JptTest extends TestCase
         $payloadObj = $jpt->toJptPayload();
 
         // 核心断言：对象里的 payload 字段必须等于 generate 返回的字符串
-        $this->assertEquals($tokenString, $payloadObj->payload);
+        $this->assertEquals($tokenString, $payloadObj->raw);
 
         // 验证：解析 Token 字符串中的 Crown (Base64部分) 来对比 JTI
         // 这里手动拆解一下 Token 来验证，确保万无一失
@@ -300,7 +300,7 @@ class JptTest extends TestCase
 
         // 生成并获取对象
         $originalPayloadObj = $jpt->toJptPayload();
-        $token = $originalPayloadObj->payload;
+        $token = $originalPayloadObj->raw;
 
         // 立即解密验证
         $validatedPayloadObj = $jpt->validate($token);

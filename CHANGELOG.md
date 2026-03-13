@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-03-13
+
+### Added
+- [Feature] 为 JptPayload 类新增 __invoke 魔术方法，支持通过路径字符串直接访问嵌套数据：
+  - 点号分隔模式：支持 $payload('c.user.profile.name') 语法，自动解析深层数组结构。
+  - 多参数模式：支持 $payload('c', 'user', 'config.local') 语法，允许键名中包含特殊字符（如点号）。
+  - 智能根节点映射：自动识别简写前缀 c (Crown) 和 p (Petal)。
+  - 安全容错：路径不存在或类型不匹配时返回 null，完美适配 PHP 空合并运算符 (??)。
+
+
 ## [1.2.3] - 2026-01-30
 
 ### Documentation

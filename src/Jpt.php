@@ -3,7 +3,6 @@
 namespace Petalbranch\Jpt;
 
 use Exception;
-use InvalidArgumentException;
 use JsonException;
 use Petalbranch\Jpt\Exception\TokenValidationException;
 use Petalbranch\PetalCipher\PetalCipher;
@@ -507,7 +506,7 @@ class Jpt
             jti: $crown['jti'],
             alg: $crown['alg'],
             nbf: (int)$crown['nbf'],
-            payload: $token, // 这里存入生成的完整 Token
+            raw: $token, // 这里存入生成的完整 Token
             crown: $crown,
             petal: $petal
         );
@@ -615,7 +614,7 @@ class Jpt
             jti: $crown['jti'] ?? '',
             alg: $crown['alg'],
             nbf: (int)($crown['nbf'] ?? ($crown['iat'] ?? 0)),
-            payload: $token,
+            raw: $token,
             crown: $crown,
             petal: $petal
         );

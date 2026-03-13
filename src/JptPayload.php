@@ -15,7 +15,7 @@ namespace Petalbranch\Jpt;
  * @param string $jti JPT标识符
  * @param string $alg 算法类型
  * @param int $nbf 生效时间
- * @param string $payload 载荷数据
+ * @param string $raw 原始 Token 字符串
  * @param array $crown Crown数据集
  * @param array $petal Petal数据集
  */
@@ -32,7 +32,7 @@ readonly class JptPayload
      * @param string $jti JPT标识符
      * @param string $alg 算法类型
      * @param int $nbf 生效时间
-     * @param string $payload 载荷数据
+     * @param string $raw 原始 Token 字符串
      * @param array $crown Crown数据集
      * @param array $petal Petal数据集
      */
@@ -45,7 +45,7 @@ readonly class JptPayload
         public string  $jti,
         public string  $alg,
         public int     $nbf,
-        public string  $payload,
+        public string  $raw,
         public array   $crown,
         public array   $petal,
     )
@@ -97,4 +97,46 @@ readonly class JptPayload
     {
         return max(0, $this->exp - time());
     }
+
+
+    /**
+     * 魔术方法，使对象可以像函数一样调用
+     * 支持通过路径访问嵌套的数组数据，使用点号分隔或可变参数
+     *
+     * @param string $path 起始路径（根节点标识符，如 'c' 表示 crown，'p' 表示 petal）
+     * @param string ...$segments 可选的额外路径参数，将与 path 一起组成完整的路径数组
+     * @return mixed 返回找到的值，如果路径不存在或无效则返回 null
+     */
+    public function __invoke(string $path, string ...$segments): mixed
+    {
+        // 构建路径键名数组
+        $keys = empty($segments) ? explode('.', $path) : [$path, ...$segments];
+
+        if (empty($keys)) return null;
+
+        // 获取根节点键名并映射到实际属性名
+        $rootKey = array_shift($keys);
+        $map = ['c' => 'crown', 'p' => 'petal'];
+
+        $propertyName = $map[$rootKey] ?? $rootKey;
+
+        // 检查属性是否存在
+        if (!property_exists($this, $propertyName)) return null;
+
+        $current = $this->$propertyName;
+
+        // 如果当前值不是数组且还有剩余路径，则无法继续访问
+        if (!is_array($this->$propertyName)) return empty($keys) ? $current : null;
+
+
+        // 遍历剩余的路径键名，逐层访问嵌套数组
+        foreach ($keys as $key) {
+            if (!is_array($current) || !array_key_exists($key, $current)) return null;
+            $current = $current[$key];
+        }
+
+        return $current;
+    }
+
+
 }
