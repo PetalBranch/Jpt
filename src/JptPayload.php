@@ -60,7 +60,7 @@ readonly class JptPayload
      * @param mixed $default 默认值，当指定键名不存在时返回此值
      * @return mixed 返回指定键名对应的值或所有数据
      */
-    public function getCrownData(?string $key, mixed $default): mixed
+    public function getCrownData(?string $key, mixed $default = null): mixed
     {
         // 如果指定了键名，则返回对应的数据或默认值
         if ($key !== null) {
@@ -77,7 +77,7 @@ readonly class JptPayload
      * @param mixed $default 默认值，当指定键名不存在时返回此值
      * @return mixed 返回指定键名对应的值或所有数据
      */
-    public function getPetalData(?string $key, mixed $default): mixed
+    public function getPetalData(?string $key, mixed $default = null): mixed
     {
         // 如果指定了键名，则返回对应的数据或默认值
         if ($key !== null) {

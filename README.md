@@ -2,7 +2,12 @@
 
 ![PHP Version](https://img.shields.io/badge/php-%3E%3D8.3-blue)
 ![License](https://img.shields.io/badge/license-Apache%202.0-green)
-![Stable](https://img.shields.io/badge/stable-v1.2.3-orange)
+![Stable](https://img.shields.io/badge/stable-v1.3.1-orange)
+
+## 🌏 语言/Language
+
+- 👉 中文
+- [English](README_EN.md)
 
 ## 📘 简介
 
@@ -47,6 +52,17 @@ composer require petalbranch/jpt
     'alg'    => 'HS256'                                   // 签名算法
     ]);
    
+    //   也可以这样初始化
+    //    $options = [
+    //        'secret' => 'your-secure-secret-key-Must-Be-Complex', // 密钥
+    //        'iss'    => 'auth.domain.com',                        // 签发人
+    //        'aud'    => 'payment-service',                        // 受众
+    //        'ttl'    => 3600,                                     // 有效期 (秒)
+    //        'alg'    => 'HS256'                                   // 签名算法
+    //    ];
+    //   
+    //    $jpt = new Jpt($options);
+   
     // 2. 设置公开数据 (Crown) - 客户端可见
     $jpt->setCrownData([
     'uid'  => 10086,
@@ -61,17 +77,22 @@ composer require petalbranch/jpt
    
     // 3. 设置私有数据 (Petal) - 仅服务端可解密
     $jpt->setPetalData([
-    'email' => 'user@example.com',
-    'sex'   => 1
+        'email' => 'user@example.com',
+        'sex'   => 1
     ]);
+   
     // 链式调用添加单个数据
-    $jpt->withPetal('phone', '13800138000');
+    $jpt->withPetal('contact', ['phone' => '13800138000']);
    
     // 4. 生成字符串
     $token = $jpt->generate();
    
-    // 5. [新特性] 立即获取元数据
+    // 5. 立即获取元数据
     // 适用于需要将 JTI 存入 Redis 做黑名单或单点登录的场景
+    // 【逻辑说明】:
+    // 1. 若此前从未调用过 generate()，toJptPayload() 内部会自动触发一次生成。
+    // 2. 若此前已调用过 generate()，toJptPayload() 将直接返回最后一次生成的结果（快照）。
+    // 3. 如需基于新数据重新生成，必须在调用 toJptPayload() 之前显式再次执行 generate()。
     $payloadObj = $jpt->toJptPayload();
    
     $jti = $payloadObj->jti; // 获取系统生成的唯一标识 ID
@@ -111,30 +132,32 @@ composer require petalbranch/jpt
         // 获取单个数据
         $uid   = $payload->getCrownData('uid', 0);
         $email = $payload->getPetalData('email', ''); // 解密后的数据
-        
+
         // 获取标准声明
         $expireIn = $payload->getExpiration(); // 距离过期剩余秒数
         $issuer   = $payload->iss;
-   
-        // --- 方式 A: 传统方法 (兼容旧版) ---
+        $audience = $payload('aud'); // V1.3.0+ 支持点号语法直接访问
+
+        // --- 方式 A: 传统方法 ---
         $uid   =  $payload->getCrownData('uid', 0);
         $email =  $payload->getPetalData('email', ''); 
-    
+        $age   =  $payload->getPetalData('age') ?? 0;
+
         // --- 方式 B: v1.3.0+ 捷径访问 (推荐) ---
         // 读取嵌套数据：c 代表 Crown, p 代表 Petal
         $userName =  $payload('c.profile.name') ?? 'Guest'; 
         $userTag  =  $payload('c.profile.tags.0'); // 访问数组元素
-        $phone    =  $payload('p.contact.phone');  // 读取加密数据 
-       
+        $phone    =  $payload('p.contact.phone');  // 读取加密数据
+
         echo "用户ID: {$uid}, 邮箱: {$email}";
-    
+
     } catch (TokenValidationException $e) {
-    // --- 验证失败 ---
-    // 401001: 格式错误
-    // 401005: 签名错误
-    // 401012: 令牌过期
-    http_response_code(401);
-    echo "认证失败: " . $e->getMessage() . " (Code: " . $e->getCode() . ")";
+        // --- 验证失败 ---
+        // 401001: 格式错误
+        // 401005: 签名错误
+        // 401012: 令牌过期
+        http_response_code(401);
+        echo "认证失败: " . $e->getMessage() . " (Code: " . $e->getCode() . ")";
     }
     ```
 
@@ -205,13 +228,12 @@ $payload('根节点.键名.子键名...')
 // 假设 Crown 中有一个键名叫 "config.local" (包含点号)
 // 错误写法： $ payload('c.config.local') -> 会被拆分为 config->local
 // 正确写法：将含点号的键名作为独立参数
-$value =  $ payload('c', 'config.local'); 
+$value =  $payload('c', 'config.local'); 
 
 // 动态拼接
 $key = 'name';
-$value =  $ payload('c', 'user', 'profile',  $ key);
+$value =  $payload('c', 'user', 'profile',  $key);
 ```
-
 
 ## 📖 API 参考手册
 
@@ -272,15 +294,16 @@ $value =  $ payload('c', 'user', 'profile',  $ key);
 
 ## 📜 更新日志
 
-### [1.3.0] - 2026-03-13
+### [1.3.1] - 2026-03-13
+#### Changed
+- [Documentation] 更新英文 README.md 说明文档，提升国际化阅读体验。
+  Added
 
-#### Added
-
-- [Feature] 为 JptPayload 类新增 __invoke 魔术方法，支持通过路径字符串直接访问嵌套数据：
-    - 点号分隔模式：支持 $payload('c.user.profile.name') 语法，自动解析深层数组结构。
-    - 多参数模式：支持 $payload('c', 'user', 'config.local') 语法，允许键名中包含特殊字符（如点号）。
-    - 智能根节点映射：自动识别简写前缀 c (Crown) 和 p (Petal)。
-    - 安全容错：路径不存在或类型不匹配时返回 null，完美适配 PHP 空合并运算符 (??)。
+- [Test] 在测试文件中添加完整的点号分隔访问模式（Dot-notated Access Pattern）单元测试用例：
+    - 覆盖深层嵌套数组的解析逻辑。
+    - 验证特殊字符键名的兼容性。
+    - 确保智能根节点映射（c/p 前缀）的准确性。
+    - 强化安全容错机制（空路径、类型不匹配）的断言测试。
 
 [👀 历史更新](CHANGELOG.md)
 

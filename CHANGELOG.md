@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-03-13
+### Changed
+- [Documentation] 更新英文 README.md 说明文档，提升国际化阅读体验。
+Added
+
+- [Test] 在测试文件中添加完整的点号分隔访问模式（Dot-notated Access Pattern）单元测试用例： 
+  - 覆盖深层嵌套数组的解析逻辑。
+  - 验证特殊字符键名的兼容性。
+  - 确保智能根节点映射（c/p 前缀）的准确性。
+  - 强化安全容错机制（空路径、类型不匹配）的断言测试。
+
+
 ## [1.3.0] - 2026-03-13
 
 ### Added

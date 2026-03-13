@@ -17,6 +17,64 @@ class JptTest extends TestCase
         'allowed_audiences' => ['test-app']
     ];
 
+
+    private Jpt $jpt;
+    private JptPayload $payload;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // 初始化 Jpt 实例
+        $this->jpt = new Jpt([
+            'secret' => 'test-secret-key-for-unit-testing-123',
+            'iss' => 'test-issuer',
+            'aud' => 'test-audience',
+            'alg' => 'HS256',
+        ]);
+
+        // 构造复杂的嵌套数据结构用于测试
+        $this->jpt->setCrownData([
+            'user' => [
+                'id' => 1001,
+                'name' => 'Alice',
+                'profile' => [
+                    'bio' => 'Developer',
+                    'tags' => ['admin', 'vip', 'beta'],
+                    'stats' => [
+                        'logins' => 50,
+                        'posts' => 12
+                    ]
+                ],
+                // 特殊键名：包含点号，用于测试多参数模式
+                'config.local' => 'dev-mode',
+                'config.prod' => 'prod-mode'
+            ],
+            'meta' => [
+                'version' => '1.0'
+            ]
+        ]);
+
+        $this->jpt->setPetalData([
+            'contact' => [
+                'email' => 'alice@example.com',
+                'phone' => '13800138000',
+                'address' => [
+                    'city' => 'Beijing',
+                    'zip' => '100000'
+                ]
+            ],
+            'secret_token' => 'xyz-987'
+        ]);
+
+        // 生成并立即获取 Payload 对象 (模拟 validate 后的结果)
+        // 注意：这里使用 toJptPayload() 是为了直接测试数据结构，
+        // 实际场景中通常是通过 $jpt->validate($token) 获取
+
+        $this->payload = $this->jpt->toJptPayload();
+    }
+
+
     /**
      * 测试最基本的生成和验证流程
      * @throws Exception
@@ -320,4 +378,147 @@ class JptTest extends TestCase
             $validatedPayloadObj->getCrownData('custom_tag', null)
         );
     }
+
+
+    /**
+     * 测试：点号分隔模式 - 基础层级访问
+     */
+    public function testInvokeDotNotationBasic(): void
+    {
+        $payload = $this->payload;
+        // 访问 Crown
+        $this->assertSame('Alice', $payload('c.user.name'));
+        $this->assertSame(1001, $payload('c.user.id'));
+
+        // 访问 Petal
+        $this->assertSame('alice@example.com', $payload('p.contact.email'));
+        $this->assertSame('xyz-987', $payload('p.secret_token'));
+    }
+
+    /**
+     * 测试：点号分隔模式 - 深层嵌套访问
+     */
+    public function testInvokeDotNotationDeepNested(): void
+    {
+        $payload = $this->payload;
+        $this->assertSame('Developer', $payload('c.user.profile.bio'));
+        $this->assertSame('Beijing', $payload('p.contact.address.city'));
+        $this->assertSame(50, $payload('c.user.profile.stats.logins'));
+    }
+
+    /**
+     * 测试：点号分隔模式 - 数组索引访问
+     */
+    public function testInvokeDotNotationArrayIndex(): void
+    {
+        $payload = $this->payload;
+        $this->assertSame('admin', $payload('c.user.profile.tags.0'));
+        $this->assertSame('vip', $payload('c.user.profile.tags.1'));
+        $this->assertSame('beta', $payload('c.user.profile.tags.2'));
+    }
+
+    /**
+     * 测试：多参数模式 - 处理含特殊字符（点号）的键名
+     * 这是多参数模式的核心用途
+     */
+    public function testInvokeMultiParamSpecialKeys(): void
+    {
+        $payload = $this->payload;
+
+        // 场景：键名本身包含点号 "config.local"
+        // 如果使用点号字符串 'c.user.config.local'，会被错误解析为 user->config->local
+        // 使用多参数模式可以正确识别为 user -> "config.local"
+
+        $this->assertSame('dev-mode', $payload('c', 'user', 'config.local'));
+        $this->assertSame('prod-mode', $payload('c', 'user', 'config.prod'));
+
+        // 混合模式：前部分是字符串，最后部分是特殊键 此处应该返回null
+        $this->assertNull($payload('c.user', 'config.local'));
+    }
+
+    /**
+     * 测试：根节点别名支持 (c/crown, p/petal)
+     */
+    public function testInvokeRootNodeAliases(): void
+    {
+        $payload = $this->payload;
+
+        // 简写
+        $this->assertSame('Alice', $payload('c.user.name'));
+        $this->assertSame('alice@example.com', $payload('p.contact.email'));
+
+        // 全称
+        $this->assertSame('Alice', $payload('crown.user.name'));
+        $this->assertSame('alice@example.com', $payload('petal.contact.email'));
+    }
+
+    /**
+     * 测试：无效路径返回 null
+     */
+    public function testInvokeInvalidPathReturnsNull(): void
+    {
+        $payload = $this->payload;
+
+        // 键不存在
+        $this->assertNull($payload('c.user.nonexistent'));
+        $this->assertNull($payload('p.contact.fake'));
+
+        // 路径中断 (中间层级不是数组)
+        // 'name' 是字符串，不能再访问 'length'
+        $this->assertNull($payload('c.user.name.length'));
+
+        // 根节点错误
+        $this->assertNull($payload('x.user.name'));
+        $this->assertNull($payload('invalid.key'));
+    }
+
+    /**
+     * 测试：与空合并运算符 (??) 的配合
+     */
+    public function testInvokeWithNullCoalescingOperator(): void
+    {
+        $payload = $this->payload;
+
+        $existing = $payload('c.user.name') ?? 'Guest';
+        $missing = $payload('c.user.nickname') ?? 'Guest';
+        $deepMissing = $payload('c.user.profile.avatar.url') ?? 'default.png';
+
+        $this->assertSame('Alice', $existing);
+        $this->assertSame('Guest', $missing);
+        $this->assertSame('default.png', $deepMissing);
+    }
+
+    /**
+     * 测试：动态变量拼接
+     */
+    public function testInvokeWithDynamicVariables(): void
+    {
+        $payload = $this->payload;
+
+        $field = 'name';
+        $index = 1;
+
+        $this->assertSame('Alice', $payload("c.user.$field"));
+        $this->assertSame('vip', $payload("c.user.profile.tags.$index"));
+
+        // 动态根节点
+        $type = 'contact';
+        $key = 'phone';
+        $this->assertSame('13800138000', $payload("p.$type.$key"));
+    }
+
+    /**
+     * 测试：类型安全性 - 当中间节点不是数组时
+     */
+    public function testInvokeTypeSafety(): void
+    {
+        $payload = $this->payload;
+
+        // 'c.user.id' 是整数 1001
+        // 尝试继续访问 1001->something 应该返回 null 而不是报错
+        $result = $payload('c.user.id.something');
+        $this->assertNull($result);
+    }
+
+
 }
