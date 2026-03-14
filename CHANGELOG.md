@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-03-14
+
+### Changed
+- **[Docs]** 更新 README.md 中的稳定版本号为 `v1.3.2`。
+- **[Refactor]** **破坏性变更说明**：明确文档指出 `$payload->payload` 属性已在 **v1.3.0** 中被**移除**。该属性仅在 v1.2.x 版本中可用，新版本必须使用 `$payload->raw` 获取原始 Token 字符串。
+- **[Docs]** 完善 API 属性列表说明，添加醒目的**迁移警告**，指导用户从旧版属性切换到 `raw`。
+
+### Fixed
+- **[Docs]** 修复英文文档 (README_EN.md) 中的段落格式及表格对齐问题。
+- **[Docs]** 全面检查并修正文档中的代码示例，确保所有示例均使用 `$payload->raw`，避免误导用户。
+
 ## [1.3.1] - 2026-03-13
 ### Changed
 - [Documentation] 更新英文 README.md 说明文档，提升国际化阅读体验。

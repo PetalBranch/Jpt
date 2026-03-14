@@ -2,7 +2,7 @@
 
 ![PHP Version](https://img.shields.io/badge/php-%3E%3D8.3-blue)
 ![License](https://img.shields.io/badge/license-Apache%202.0-green)
-![Stable](https://img.shields.io/badge/stable-v1.3.1-orange)
+![Stable](https://img.shields.io/badge/stable-v1.3.2-orange)
 
 ## 🌏 语言/Language
 
@@ -284,7 +284,13 @@ $value =  $payload('c', 'user', 'profile',  $key);
 - `$payload->exp` (int) - 过期时间戳
 - `$payload->iat` (int) - 签发时间戳
 - `$payload->nbf` (int) - 生效时间戳
-- `$payload->payload` (string) - 原始 Token 字符串
+- `$payload->raw` (string) - **原始 Token 字符串** (v1.3.0+)。
+
+> ⚠️ **重要提示 (破坏性变更)**:
+> 旧属性 `$payload->payload` 已在 **v1.3.0** 中被**彻底移除**。
+> - 该属性仅在 `v1.2.x` 版本中可用。
+> - 在 `v1.3.0` 及更高版本中，访问 `$payload->payload` 将导致错误。
+> - **请务必使用 `$payload->raw` 替代。**
 
 #### 辅助方法
 
@@ -293,19 +299,26 @@ $value =  $payload('c', 'user', 'profile',  $key);
 - `getExpiration(): int` - 获取距离过期的剩余秒数 (已过期返回 0)。
 
 ## 📜 更新日志
+### [1.3.2] - 2026-03-14
 
-### [1.3.1] - 2026-03-13
 #### Changed
-- [Documentation] 更新英文 README.md 说明文档，提升国际化阅读体验。
-  Added
+- **[Docs]** 更新 README.md 中的稳定版本号为 `v1.3.2`。
+- **[Refactor]** **破坏性变更说明**：明确文档指出 `$payload->payload` 属性已在 **v1.3.0** 中被**移除**。该属性仅在 v1.2.x 版本中可用，新版本必须使用 `$payload->raw` 获取原始 Token 字符串。
+- **[Docs]** 完善 API 属性列表说明，添加醒目的**迁移警告**，指导用户从旧版属性切换到 `raw`。
 
-- [Test] 在测试文件中添加完整的点号分隔访问模式（Dot-notated Access Pattern）单元测试用例：
-    - 覆盖深层嵌套数组的解析逻辑。
-    - 验证特殊字符键名的兼容性。
-    - 确保智能根节点映射（c/p 前缀）的准确性。
-    - 强化安全容错机制（空路径、类型不匹配）的断言测试。
+#### Fixed
+- **[Docs]** 修复英文文档 (README_EN.md) 中的段落格式及表格对齐问题。
+- **[Docs]** 全面检查并修正文档中的代码示例，确保所有示例均使用 `$payload->raw`，避免误导用户。
+
+> ⚠️ **重要迁移提示 (Breaking Change)**:
+> 属性 `$payload->payload` 已于 **v1.3.0** 正式**移除**。
+> - ❌ **错误用法 (v1.3.0+)**: `$token = $payload->payload;` (将抛出异常)
+> - ✅ **正确用法**: `$token = $payload->raw;`
+> 
+> 请确保您的代码已更新至使用 `raw` 属性。
 
 [👀 历史更新](CHANGELOG.md)
+
 
 ## 📄 许可证
 
